@@ -141,7 +141,7 @@
 
     <script>
         const ADMIN_TELEGRAM_ID = 5818548555;
-        const BOT_CLIENT_ID = 'viacheslav7'; // Для бота Тильды
+        const BOT_CLIENT_ID = 'viacheslav7'; 
         const tg = window.Telegram.WebApp;
         tg.expand();
 
@@ -176,23 +176,26 @@
             }
         });
 
-                                async function init() {
+        async function init() {
             const user = tg.initDataUnsafe?.user;
             if (!user) return;
             document.getElementById('greeting').innerText = `Привет, ${user.first_name}!`;
             
             try {
                 if (user.id === ADMIN_TELEGRAM_ID) {
+                    // АДМИН
                     myClient = { client_id: BOT_CLIENT_ID, business_name: 'Админ-просмотр', paid_until: '2099-12-31' };
-                    const resLeads = await fetch(`/api/get-leads?telegram_id=${user.id}&client_id=${BOT_CLIENT_ID}`);
+                    const resLeads = await fetch(`/api/get-leads?client_id=${BOT_CLIENT_ID}`);
                     myLeads = await resLeads.json();
                     if (!Array.isArray(myLeads)) myLeads = [];
                     setupAdminUI();
                 } else {
+                    // ОБЫЧНЫЙ ПОЛЬЗОВАТЕЛЬ
                     const resClient = await fetch(`/api/get-my-client?owner_telegram_id=${user.id}`);
                     myClient = await resClient.json();
-                    
-                    if (!myClient || myClient.client_id !== BOT_CLIENT_ID) {
+
+                    // Если база не нашла клиента по его Telegram ID, значит он чужой
+                    if (!myClient) {
                         myLeads = [];
                         document.getElementById('acc-plan-name').innerText = 'Гость';
                         document.getElementById('acc-status').innerText = 'Нет доступа';
@@ -205,18 +208,17 @@
                         return;
                     }
 
-                    if (myClient) {
-                        const resLeads = await fetch(`/api/get-leads?telegram_id=${user.id}&client_id=${myClient.client_id}`);
-                        myLeads = await resLeads.json();
-                        if (!Array.isArray(myLeads)) myLeads = [];
-                        setupClientUI(myClient);
-                    }
+                    // Если нашли — грузим его заявки
+                    const resLeads = await fetch(`/api/get-leads?client_id=${myClient.client_id}`);
+                    myLeads = await resLeads.json();
+                    if (!Array.isArray(myLeads)) myLeads = [];
+                    setupClientUI(myClient);
                 }
                 renderPlans();
             } catch (e) { console.error(e); }
         }
 
-             function setupClientUI(client) {
+        function setupClientUI(client) {
             const paidUntil = new Date(client.paid_until);
             document.getElementById('acc-plan-name').innerText = client.business_name || 'Бизнес';
             document.getElementById('acc-date').innerText = paidUntil.toLocaleDateString('ru-RU');
@@ -407,7 +409,8 @@
             closeModal('supportModal');
         }
 
-function goToCRM() { window.location.href = '/crm?auth_success=1&telegram_id=' + tg.initDataUnsafe.user.id + '&view_client=' + BOT_CLIENT_ID; }
+        function goToCRM() { window.location.href = '/crm?auth_success=1&telegram_id=' + tg.initDataUnsafe.user.id + '&view_client=' + BOT_CLIENT_ID; }
+        
         init();
     </script>
 </body>
